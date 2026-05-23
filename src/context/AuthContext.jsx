@@ -10,18 +10,33 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState('');
 
   const fetchProfile = async (userId) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*, locatii(id, nume)')
-      .eq('id', userId)
-      .single();
-    if (data) setProfile(data);
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*, locatii(id, nume)')
+        .eq('id', userId)
+        .single();
+      if (data) setProfile(data);
+    } catch (e) {
+      console.error('fetchProfile error:', e);
+    }
   };
 
   useEffect(() => {
+    // Timeout de siguranță — dacă Supabase nu răspunde în 5 secunde, continuă
+    const timeout = setTimeout(() => {
+      console.warn('Supabase timeout — continuăm fără sesiune');
+      setLoading(false);
+    }, 5000);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout);
       setUser(session?.user ?? null);
       if (session?.user) fetchProfile(session.user.id);
+      setLoading(false);
+    }).catch(err => {
+      clearTimeout(timeout);
+      console.error('getSession error:', err);
       setLoading(false);
     });
 
@@ -32,7 +47,11 @@ export function AuthProvider({ children }) {
         else setProfile(null);
       }
     );
-    return () => subscription.unsubscribe();
+
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email, parola) => {
