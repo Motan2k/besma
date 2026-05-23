@@ -5,12 +5,12 @@ import { supabase } from '../../lib/supabase';
 
 const TIPURI = ['RCA', 'ITP', 'Rovignetă', 'CASCO', 'Altele'];
 
-export default function FormularDocument({ isOpen, onClose, masinaId, masina, onSuccess }) {
+export default function FormularDocument({ isOpen, onClose, masinaId, masina, onSuccess, tipPreselect }) {
   const { adaugaDocument, uploadFisier } = useDocumenteActions();
   const { data: masini } = useMasini();
 
   const [selectedMasinaId, setSelectedMasinaId] = useState(masinaId || '');
-  const [form, setForm] = useState({ tip: 'RCA', asigurator: '', nr_polita: '', data_start: '', data_expirare: '', detalii: '' });
+  const [form, setForm] = useState({ tip: tipPreselect || 'RCA', asigurator: '', nr_polita: '', data_start: '', data_expirare: '', detalii: '' });
   const [fisier, setFisier] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,10 +19,10 @@ export default function FormularDocument({ isOpen, onClose, masinaId, masina, on
   useEffect(() => {
     if (isOpen) {
       setSelectedMasinaId(masinaId || '');
-      setForm({ tip: 'RCA', asigurator: '', nr_polita: '', data_start: '', data_expirare: '', detalii: '' });
+      setForm({ tip: tipPreselect || 'RCA', asigurator: '', nr_polita: '', data_start: '', data_expirare: '', detalii: '' });
       setFisier(null); setError(''); setSuccess('');
     }
-  }, [isOpen, masinaId]);
+  }, [isOpen, masinaId, tipPreselect]);
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
 
@@ -62,16 +62,11 @@ export default function FormularDocument({ isOpen, onClose, masinaId, masina, on
       <form onSubmit={handleSubmit}>
         <ErrorBox message={error} /><SuccessBox message={success} />
 
-        {/* Selector mașină dacă nu e preselecată */}
         {!masinaId && (
           <Field label="Mașină" required>
             <Select value={selectedMasinaId} onChange={e => setSelectedMasinaId(e.target.value)}>
               <option value="">Selectează mașina</option>
-              {masini?.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.nr_inmatriculare} — {m.marca} {m.model}
-                </option>
-              ))}
+              {masini?.map(m => <option key={m.id} value={m.id}>{m.nr_inmatriculare} — {m.marca} {m.model}</option>)}
             </Select>
           </Field>
         )}
