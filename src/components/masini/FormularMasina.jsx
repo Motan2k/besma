@@ -60,7 +60,7 @@ export default function FormularMasina({ isOpen, onClose, masina = null, onSucce
     e.preventDefault();
     setError('');
     if (!form.marca || !form.model || !form.nr_inmatriculare || !form.locatie_id) {
-      setError('Completează câmpurile obligatorii: Marcă, Model, Nr. înmatriculare, Locație.');
+      setError('Completează câmpurile obligatorii: Marcă, Model, Nr. înmatriculare.');
       return;
     }
     setLoading(true);
@@ -141,7 +141,7 @@ export default function FormularMasina({ isOpen, onClose, masina = null, onSucce
 
         <Divider label="Organizare" />
         <Row cols={2}>
-          <Field label="Locație" required>
+          <Field label="Locație">
             <Select value={form.locatie_id} onChange={set('locatie_id')}>
               <option value="">Selectează locația</option>
               {locatii?.map(l => <option key={l.id} value={l.id}>{l.nume}</option>)}
