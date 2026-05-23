@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../common/Modal';
-import { Field, Input, Select, Textarea, Row, Divider, FormActions, ErrorBox, SuccessBox } from '../common/FormFields';
+import {
+  Field, Input, Select, Textarea, Row,
+  Divider, FormActions, ErrorBox, SuccessBox
+} from '../common/FormFields';
 import FileUpload from '../common/FileUpload';
 import { useServiciiActions } from '../../hooks/useData';
 import { supabase } from '../../lib/supabase';
@@ -10,9 +13,12 @@ const TIPURI_SERVICE = [
   'Suspensie', 'Electricitate', 'Caroserie', 'ITP', 'Revizie', 'Altele'
 ];
 
-export default function FormularService({ isOpen, onClose, masinaId, masina, onSuccess }) {
+export default function FormularService({
+  isOpen, onClose, masinaId, masina, onSuccess, masiniLista = []
+}) {
   const { adaugaServiciu, uploadDocumentServiciu } = useServiciiActions();
 
+  const [selectedMasinaId, setSelectedMasinaId] = useState(masinaId || '');
   const [form, setForm] = useState({
     data_interventie: new Date().toISOString().split('T')[0],
     km_la_interventie: '',
@@ -30,6 +36,7 @@ export default function FormularService({ isOpen, onClose, masinaId, masina, onS
 
   useEffect(() => {
     if (isOpen) {
+      setSelectedMasinaId(masinaId || '');
       setForm({
         data_interventie: new Date().toISOString().split('T')[0],
         km_la_interventie: masina?.km_actuali || '',
@@ -37,25 +44,27 @@ export default function FormularService({ isOpen, onClose, masinaId, masina, onS
         service_auto: '', cost: '', moneda: 'RON',
         urmator_data: '', urmator_km: '', note: '',
       });
-      setFisiere([]); setError(''); setSuccess('');
+      setFisiere([]);
+      setError('');
+      setSuccess('');
     }
-  }, [isOpen, masina]);
+  }, [isOpen, masina, masinaId]);
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.titlu || !form.data_interventie) {
-      setError('Completează titlul intervenției și data.');
-      return;
-    }
-    setLoading(true);
+    const targetMasinaId = masinaId || selectedMasinaId;
+    if (!targetMasinaId) { setError('Selectează mașina pentru care adaugi intervenția.'); return; }
+    if (!form.titlu) { setError('Completează titlul intervenției.'); return; }
+    if (!form.data_interventie) { setError('Completează data intervenției.'); return; }
 
+    setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
 
     const { data: serviciu, error: sErr } = await adaugaServiciu({
-      masina_id: masinaId,
+      masina_id: targetMasinaId,
       data_interventie: form.data_interventie,
       km_la_interventie: parseInt(form.km_la_interventie) || null,
       titlu: form.titlu,
@@ -72,21 +81,31 @@ export default function FormularService({ isOpen, onClose, masinaId, masina, onS
 
     if (sErr) { setError(sErr.message); setLoading(false); return; }
 
-    // Upload documente atașate
     for (const f of fisiere) {
       await uploadDocumentServiciu(serviciu.id, f);
     }
 
     setLoading(false);
-    setSuccess('Intervenția a fost adăugată cu succes!');
+    setSuccess('Intervenția a fost salvată cu succes!');
     setTimeout(() => { onSuccess?.(); onClose(); }, 1200);
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Adaugă intervenție service${masina ? ` — ${masina.nr_inmatriculare}` : ''}`} width={640}>
+    <Modal isOpen={isOpen} onClose={onClose} title={masina ? `Adaugă intervenție — ${masina.nr_inmatriculare}` : 'Adaugă intervenție service'} width={660}>
       <form onSubmit={handleSubmit}>
         <ErrorBox message={error} />
         <SuccessBox message={success} />
+
+        {!masinaId && (
+          <Field label="Mașină" required>
+            <Select value={selectedMasinaId} onChange={e => setSelectedMasinaId(e.target.value)}>
+              <option value="">Selectează mașina</option>
+              {masiniLista.map(m => (
+                <option key={m.id} value={m.id}>{m.nr_inmatriculare} — {m.marca} {m.model}</option>
+              ))}
+            </Select>
+          </Field>
+        )}
 
         <Divider label="Detalii intervenție" />
         <Field label="Titlu intervenție" required>
@@ -103,10 +122,7 @@ export default function FormularService({ isOpen, onClose, masinaId, masina, onS
           </Field>
         </Row>
         <Field label="Descriere detaliată">
-          <Textarea
-            placeholder="ex: Ulei 5W-40 Castrol 5L, filtru ulei Mann, filtru aer K&N..."
-            value={form.descriere} onChange={set('descriere')} rows={3}
-          />
+          <Textarea placeholder="ex: Ulei 5W-40 Castrol 5L, filtru ulei Mann..." value={form.descriere} onChange={set('descriere')} rows={3} />
         </Field>
 
         <Divider label="Date tehnice" />
@@ -119,7 +135,7 @@ export default function FormularService({ isOpen, onClose, masinaId, masina, onS
           </Field>
         </Row>
         <Row cols={2}>
-          <Field label="Cost (RON)">
+          <Field label="Cost">
             <Input type="number" min="0" step="0.01" placeholder="ex: 520" value={form.cost} onChange={set('cost')} />
           </Field>
           <Field label="Monedă">
@@ -132,10 +148,10 @@ export default function FormularService({ isOpen, onClose, masinaId, masina, onS
 
         <Divider label="Următor service (opțional)" />
         <Row cols={2}>
-          <Field label="Dată estimată" hint="Lasă gol dacă nu știi">
+          <Field label="Dată estimată">
             <Input type="date" value={form.urmator_data} onChange={set('urmator_data')} />
           </Field>
-          <Field label="Km estimați" hint="sau introdu km la care trebuie service">
+          <Field label="Km estimați">
             <Input type="number" min="0" placeholder="ex: 95000" value={form.urmator_km} onChange={set('urmator_km')} />
           </Field>
         </Row>
@@ -152,19 +168,23 @@ export default function FormularService({ isOpen, onClose, masinaId, masina, onS
           label="Atașează factură sau deviz (PDF / imagine)"
         />
         {fisiere.length > 0 && (
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: '#5F5E5A', marginBottom: 6 }}>
+              Fișiere selectate ({fisiere.length}):
+            </div>
             {fisiere.map((f, i) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                fontSize: 12, color: '#5F5E5A', padding: '4px 0',
-                borderBottom: '0.5px solid #F0EEE8',
+                fontSize: 12, padding: '6px 10px', background: '#FAFAF8',
+                borderRadius: 6, marginBottom: 4, border: '0.5px solid #E8E6E0',
               }}>
-                <span><i className="ti ti-paperclip" style={{ marginRight: 6 }} />{f.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setFisiere(prev => prev.filter((_, j) => j !== i))}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888780', fontSize: 14 }}
-                >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <i className="ti ti-file" style={{ color: '#185FA5' }} />
+                  {f.name}
+                  <span style={{ color: '#888780', fontSize: 11 }}>({(f.size / 1024).toFixed(0)} KB)</span>
+                </span>
+                <button type="button" onClick={() => setFisiere(prev => prev.filter((_, j) => j !== i))}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888780', fontSize: 16, display: 'flex' }}>
                   <i className="ti ti-x" />
                 </button>
               </div>
