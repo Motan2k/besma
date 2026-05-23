@@ -1,0 +1,6 @@
+[functions.notificari-expirari]
+verify_jwt = false
+
+# Cron: în fiecare zi la 08:00 UTC (10:00 ora României)
+[functions.notificari-expirari.cron]
+schedule = "0 8 * * *"
