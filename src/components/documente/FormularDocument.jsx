@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Field, Input, Select, Row, Divider, FormActions, ErrorBox, SuccessBox, FileUpload } from '../common/index.jsx';
-import { useDocumenteActions } from '../../hooks/useData';
+import { useDocumenteActions, useMasini } from '../../hooks/useData';
 import { supabase } from '../../lib/supabase';
 
 const TIPURI = ['RCA', 'ITP', 'Rovignetă', 'CASCO', 'Altele'];
 
 export default function FormularDocument({ isOpen, onClose, masinaId, masina, onSuccess }) {
   const { adaugaDocument, uploadFisier } = useDocumenteActions();
+  const { data: masini } = useMasini();
+
+  const [selectedMasinaId, setSelectedMasinaId] = useState(masinaId || '');
   const [form, setForm] = useState({ tip: 'RCA', asigurator: '', nr_polita: '', data_start: '', data_expirare: '', detalii: '' });
   const [fisier, setFisier] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -14,19 +17,25 @@ export default function FormularDocument({ isOpen, onClose, masinaId, masina, on
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    if (isOpen) { setForm({ tip: 'RCA', asigurator: '', nr_polita: '', data_start: '', data_expirare: '', detalii: '' }); setFisier(null); setError(''); setSuccess(''); }
-  }, [isOpen]);
+    if (isOpen) {
+      setSelectedMasinaId(masinaId || '');
+      setForm({ tip: 'RCA', asigurator: '', nr_polita: '', data_start: '', data_expirare: '', detalii: '' });
+      setFisier(null); setError(''); setSuccess('');
+    }
+  }, [isOpen, masinaId]);
 
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setError('');
+    const targetMasinaId = masinaId || selectedMasinaId;
+    if (!targetMasinaId) { setError('Selectează mașina pentru care adaugi documentul.'); return; }
     if (!form.data_expirare) { setError('Completează data expirării.'); return; }
     setLoading(true);
 
     let fisier_url = null, fisier_name = null;
     if (fisier) {
-      const path = `${masinaId}/${form.tip}/${Date.now()}_${fisier.name}`;
+      const path = `${targetMasinaId}/${form.tip}/${Date.now()}_${fisier.name}`;
       const { url, error: upErr } = await uploadFisier('documente', path, fisier);
       if (upErr) { setError('Eroare upload: ' + upErr.message); setLoading(false); return; }
       fisier_url = url; fisier_name = fisier.name;
@@ -34,7 +43,7 @@ export default function FormularDocument({ isOpen, onClose, masinaId, masina, on
 
     const { data: { user } } = await supabase.auth.getUser();
     const { error } = await adaugaDocument({
-      masina_id: masinaId, tip: form.tip,
+      masina_id: targetMasinaId, tip: form.tip,
       asigurator: form.asigurator || null, nr_polita: form.nr_polita || null,
       data_start: form.data_start || null, data_expirare: form.data_expirare,
       detalii: form.detalii || null, fisier_url, fisier_name, created_by: user?.id,
@@ -46,10 +55,26 @@ export default function FormularDocument({ isOpen, onClose, masinaId, masina, on
     setTimeout(() => { onSuccess?.(); onClose(); }, 1200);
   };
 
+  const masinaSelectata = masina || masini?.find(m => m.id === selectedMasinaId);
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Adaugă document${masina ? ` — ${masina.nr_inmatriculare}` : ''}`} width={540}>
+    <Modal isOpen={isOpen} onClose={onClose} title={`Adaugă document${masinaSelectata ? ` — ${masinaSelectata.nr_inmatriculare}` : ''}`} width={540}>
       <form onSubmit={handleSubmit}>
         <ErrorBox message={error} /><SuccessBox message={success} />
+
+        {/* Selector mașină dacă nu e preselecată */}
+        {!masinaId && (
+          <Field label="Mașină" required>
+            <Select value={selectedMasinaId} onChange={e => setSelectedMasinaId(e.target.value)}>
+              <option value="">Selectează mașina</option>
+              {masini?.map(m => (
+                <option key={m.id} value={m.id}>
+                  {m.nr_inmatriculare} — {m.marca} {m.model}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
 
         <Field label="Tip document" required>
           <Select value={form.tip} onChange={set('tip')}>
