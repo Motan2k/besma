@@ -8,6 +8,8 @@ import { Masini } from './components/masini/Masini';
 import Documente from './components/documente/Documente';
 import { Service } from './components/service/index.jsx';
 import { Locatii, Soferi } from './components/locatii/index.jsx';
+import AutoID from './components/autoid/AutoID';
+
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -50,6 +52,7 @@ function AppRoutes() {
         <Route path="locatii" element={<Locatii />} />
         <Route path="soferi" element={<Soferi />} />
         <Route path="setari" element={<Setari />} />
+	<Route path="autoid" element={<AutoID />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
