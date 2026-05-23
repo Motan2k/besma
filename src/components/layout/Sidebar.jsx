@@ -8,6 +8,7 @@ const navMain = [
   { to: '/documente', icon: 'ti-file-certificate', label: 'Documente' },
   { to: '/service', icon: 'ti-tool', label: 'Service' },
   { to: '/autoid', icon: 'ti-cpu', label: 'Auto ID' },
+  { to: '/istoric', icon: 'ti-history', label: 'Istoric' },
 ];
 const navOrg = [
   { to: '/locatii', icon: 'ti-map-pin', label: 'Locații' },
