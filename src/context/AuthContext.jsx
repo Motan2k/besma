@@ -32,15 +32,12 @@ export function AuthProvider({ children }) {
         else setProfile(null);
       }
     );
-
     return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email, parola) => {
     setError('');
-    const { error } = await supabase.auth.signInWithPassword({
-      email, password: parola
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password: parola });
     if (error) { setError('Email sau parolă incorectă.'); return false; }
     return true;
   };

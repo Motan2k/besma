@@ -16,14 +16,11 @@ function useQuery(queryFn, deps = []) {
   }, deps); // eslint-disable-line
 
   useEffect(() => { fetch(); }, [fetch]);
-
   return { data, loading, error, refetch: fetch };
 }
 
 export function useLocatii() {
-  return useQuery(() =>
-    supabase.from('locatii').select('*').order('nume')
-  );
+  return useQuery(() => supabase.from('locatii').select('*').order('nume'));
 }
 
 export function useMasini(filters = {}) {
@@ -31,7 +28,7 @@ export function useMasini(filters = {}) {
   return useQuery(() => {
     let q = supabase
       .from('masini')
-      .select(`*, locatii(id, nume), profiles!sofer_id(id, full_name, phone)`)
+      .select('*, locatii(id, nume), profiles!sofer_id(id, full_name, phone)')
       .order('nr_inmatriculare');
     if (filters.locatieId) q = q.eq('locatie_id', filters.locatieId);
     if (filters.status) q = q.eq('status', filters.status);
@@ -43,12 +40,13 @@ export function useDocumente(filters = {}) {
   return useQuery(() => {
     let q = supabase
       .from('documente')
-      .select(`*, masini(id, nr_inmatriculare, locatie_id, locatii(nume))`)
+      .select('*, masini(id, nr_inmatriculare, locatie_id, locatii(nume))')
       .order('data_expirare');
     if (filters.masinaId) q = q.eq('masina_id', filters.masinaId);
     if (filters.tip) q = q.eq('tip', filters.tip);
+    if (filters.locatieId) q = q.eq('masini.locatie_id', filters.locatieId);
     return q;
-  }, [filters.masinaId, filters.tip]);
+  }, [filters.masinaId, filters.tip, filters.locatieId]);
 }
 
 export function useDocumenteExpira(zile = 30) {
@@ -61,7 +59,7 @@ export function useServicii(filters = {}) {
   return useQuery(() => {
     let q = supabase
       .from('servicii')
-      .select(`*, masini(id, nr_inmatriculare, marca, model), servicii_documente(id, nume_fisier, fisier_url)`)
+      .select('*, masini(id, nr_inmatriculare, marca, model), servicii_documente(id, nume_fisier, fisier_url, tip_fisier)')
       .order('data_interventie', { ascending: false });
     if (filters.masinaId) q = q.eq('masina_id', filters.masinaId);
     return q;
@@ -102,7 +100,11 @@ export function useDocumenteActions() {
     const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(path);
     return { url: publicUrl, error: null };
   };
-  return { adaugaDocument, uploadFisier };
+  const deleteDocument = async (id) => {
+    const { error } = await supabase.from('documente').delete().eq('id', id);
+    return { error };
+  };
+  return { adaugaDocument, uploadFisier, deleteDocument };
 }
 
 export function useServiciiActions() {
@@ -124,5 +126,23 @@ export function useServiciiActions() {
     });
     return { url: publicUrl, error: null };
   };
-  return { adaugaServiciu, uploadDocumentServiciu };
+  const deleteServiciu = async (id) => {
+    const { error } = await supabase.from('servicii').delete().eq('id', id);
+    return { error };
+  };
+  return { adaugaServiciu, uploadDocumentServiciu, deleteServiciu };
+}
+
+export function useLocatiiActions() {
+  const adaugaLocatie = async (data) => {
+    const { data: result, error } = await supabase.from('locatii').insert(data).select().single();
+    return { data: result, error };
+  };
+  const updateLocatie = async (id, data) => {
+    const { data: result, error } = await supabase
+      .from('locatii').update({ ...data, updated_at: new Date().toISOString() })
+      .eq('id', id).select().single();
+    return { data: result, error };
+  };
+  return { adaugaLocatie, updateLocatie };
 }
