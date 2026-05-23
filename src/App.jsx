@@ -9,7 +9,6 @@ import Documente from './components/documente/Documente';
 import { Service } from './components/service/index.jsx';
 import { Locatii, Soferi } from './components/locatii/index.jsx';
 import AutoID from './components/autoid/AutoID';
-//import Istoric from './components/istoric/Istoric';
 
 
 function ProtectedRoute({ children }) {
@@ -54,9 +53,7 @@ function AppRoutes() {
         <Route path="soferi" element={<Soferi />} />
         <Route path="setari" element={<Setari />} />
 	    <Route path="autoid" element={<AutoID />} />
-	   // <Route path="istoric" element={<Istoric />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
